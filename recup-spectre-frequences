@@ -1,0 +1,21 @@
+import librosa
+import librosa.display
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Charger un fichier audio
+y, sr = librosa.load('Jean-Rostand.wav')
+
+# Calculer le spectrogramme (STFT)
+D = librosa.stft(y)
+
+# Convertir en dB
+S_db = librosa.amplitude_to_db(np.abs(D), ref=np.max)
+
+# Afficher le spectre des fréquences
+plt.figure(figsize=(10, 4))
+librosa.display.specshow(S_db, x_axis='time', y_axis='log', sr=sr)
+plt.colorbar(format="%+2.0f dB")
+plt.title("Spectrogramme en fréquences")
+plt.tight_layout()
+plt.show()
