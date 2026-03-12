@@ -1,0 +1,42 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Mar 12 10:30:00 2026
+
+@author: VALFORT-CHRISTOPHE Elyott et GIRAUD Fériel
+"""
+
+import librosa
+import librosa.display
+import matplotlib.pyplot as plt
+import numpy as np
+import soundfile as sf
+f="Jean-Rostand.wav"
+y , sr = librosa.load(f,sr=None)
+
+def resample(a,srt):
+    
+    rsa = librosa.resample(a, orig_sr=sr, target_sr=srt)
+    
+    D = librosa.stft(rsa, n_fft=2048, hop_length=512)
+    S_db = librosa.amplitude_to_db(np.abs(D), ref=np.max)
+    
+    # plt.figure()
+    # librosa.display.waveshow(rsa,sr=srt)
+    # plt.show()
+    
+    # plt.figure()
+    # librosa.display.specshow(S_db, sr=sr, x_axis="time", y_axis="log")
+    # plt.colorbar(label="dB")
+    # plt.title("Spectrogramme")
+    # plt.show()
+    
+    nf=str(srt)+"Hz-"+f
+    sf.write(nf,rsa,srt)
+    return rsa
+
+LSR=[5000,4000,3000,2000,1000,500,100,82]
+
+def multisampling(a,L):
+    for sr in L :
+        resample(a,sr)
+    return "OK ! "
