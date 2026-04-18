@@ -5,38 +5,186 @@ Created on Thu Mar 12 10:30:00 2026
 @author: VALFORT-CHRISTOPHE Elyott et GIRAUD Fériel
 """
 
+# Partie 1
+
+# Le but de cette partie est de resample un audio à certains sr,
+# éventuellement en masse et d'analyser les ratios poids/samplerate afin
+# d'y trouver un potentiel optimum
+
+
+import os
+import time as t
+from multiprocessing import Pool
 import librosa
 import librosa.display
 import matplotlib.pyplot as plt
 import numpy as np
 import soundfile as sf
-f="Jean-Rostand.wav"
-y , sr = librosa.load(f,sr=None)
 
-def resample(a,srt):
-    
+
+
+
+
+F="Jean-Rostand.wav"
+y , sr = librosa.load( F , sr=None , mono=True )
+sry=sr
+
+def resample(a,srt) :
+    '''Fonction rééchantillonnant l'audio choisi'''
     rsa = librosa.resample(a, orig_sr=sr, target_sr=srt)
-    
-    D = librosa.stft(rsa, n_fft=2048, hop_length=512)
-    S_db = librosa.amplitude_to_db(np.abs(D), ref=np.max)
-    
-    # plt.figure()
-    # librosa.display.waveshow(rsa,sr=srt)
-    # plt.show()
-    
-    # plt.figure()
-    # librosa.display.specshow(S_db, sr=sr, x_axis="time", y_axis="log")
-    # plt.colorbar(label="dB")
-    # plt.title("Spectrogramme")
-    # plt.show()
-    
-    nf=str(srt)+"Hz-"+f
-    sf.write(nf,rsa,srt)
-    return rsa
+    # Changement du sr
+    out = f"{srt}Hz.wav"
+    # Création du nouveau nom de fichier
 
-LSR=[5000,4000,3000,2000,1000,500,100,82]
+    sf.write(out,rsa,srt)
+    # Ecriture du nouveau fichier
 
-def multisampling(a,L):
-    for sr in L :
-        resample(a,sr)
-    return "OK ! "
+    # Génération de charts
+    d = librosa.stft(rsa, n_fft=2048, hop_length=512)
+    s_db = librosa.amplitude_to_db(np.abs(d), ref=np.max)
+    plt.figure()
+    librosa.display.waveshow(rsa,sr=srt)
+    plt.show()
+
+    plt.figure()
+    librosa.display.specshow(s_db, sr=sr, x_axis="time", y_axis="log")
+    plt.colorbar(label="dB")
+    plt.title("Spectrogramme")
+    plt.show()
+
+
+    return out
+
+LSR=[5000+1000*i for i in range(11)]
+# Liste des sr cibles pour le multisampling
+
+# Fonction simple " 1 par 1 " (single core, lourd pour de gros échantillons)
+
+def multisampling(a,l):
+    '''Fonction réalisant f: resample pour chaque valeur de la liste choisie'''
+    t0=t.time()
+    for e in l :
+        resample(a,e)
+    t1=t.time()
+    print(t1-t0)
+    print("OK ! ")
+
+# Fonction créée avec un pool de coeurs
+
+def multimulti(a,l) :
+    '''Fonction du même type que multisampling, mais en multi coeurs'''
+    t0=t.time()
+    with Pool(16) as p :
+        for i in l :
+            p.starmap(resample, [(a,i)])
+    t1=t.time()
+    print(t1-t0)
+    print("OK !")
+
+def grafik(a,l):
+    '''Fonction générant le graphique des ratios poids/sr'''
+    srs = []
+    poids = []
+    ratio = []
+
+    for e in l :
+        path = resample(a,e)
+        s = os.path.getsize(path) -45
+
+        srs.append(sr)
+        poids.append(s)
+        ratio.append(s/sr)
+
+    srs = np.array(srs)
+    poids = np.array(poids)
+    ratio = np.array(ratio)
+
+    plt.figure()
+    plt.plot(srs,ratio)
+    plt.xlabel("Sample rate (Hz)")
+    plt.ylabel("Poids/Sample Rate (octets/Hz)")
+    plt.title("Ratio Poids / Sample Rate")
+    plt.show()
+
+    return srs,poids,ratio
+
+
+
+# Partie 2
+# Le but de cette partie est de comparer cette fois-ci les ratios écart à
+# l'original / poids afin de maximiser une audibilité
+
+def spec_db(a, sr_a):
+    '''Renvoie le spectrogramme de l'udio choisi'''
+    s = np.abs(librosa.stft(a, n_fft=2048))**2
+    s_db = librosa.power_to_db(s, ref=np.max)
+
+
+    return s_db,sr_a
+
+def diff_spectro_moyenne(y0, sr0, y1, sr1):
+    '''Renvoie la moyenne des écarts de spectres audio'''
+    s0 = spec_db(y0, sr0)[0]
+    s1 = spec_db(y1, sr1)[0]
+
+    sr_min=min(sr0,sr1)
+    k0 = int(s0.shape[0] * (sr_min / sr0))
+    k1 = int(s1.shape[0] * (sr_min / sr1))
+    s0c = s0[:k0, :]
+    s1c = s1[:k1, :]
+
+    j = min(s0c.shape[0], s1c.shape[0])
+    k = min(s0c.shape[1], s1c.shape[1])
+    s0c = s0c[:j, :k]
+    s1c = s1c[:j, :k]
+
+    d = s1c - s0c
+    diff_moy = np.mean(np.abs(d))
+
+    return diff_moy, d
+
+def plot_diff_spectro(d, sr_min, hop_length=512, title="Diff spectrogramme (dB)"):
+    '''Affiche la différence de spectrogrammes'''
+    plt.figure()
+    librosa.display.specshow(d, sr=sr_min, hop_length=hop_length,
+                             x_axis="time", y_axis="hz", cmap="magma")
+    plt.colorbar(label="Δ dB")
+    plt.title(title)
+    plt.tight_layout()
+    plt.show()
+
+def ratios_diff_poids(y0, sr0, l) :
+    '''Renvoie les ratios diff/poids d'échantillonnages de y0 sur l'''
+    srs = []
+    poids = []
+    diffs = []
+    ratios = []
+
+    for e in l :
+        path = resample(y0, e)
+
+        y1, sr1 = librosa.load(path, sr=None, mono=True)
+
+        diff_moy = diff_spectro_moyenne(y0, sr0, y1, sr1)[0]
+
+        s = os.path.getsize(path) - 45
+        srs.append(e)
+        poids.append(s)
+        diffs.append(diff_moy)
+        ratios.append(diff_moy / s)
+
+    return np.array(srs), np.array(poids), np.array(diffs), np.array(ratios)
+
+def affichage_ratios(y0, sr0, l):
+    '''Affiche les ratios précédemment calculés'''
+    copy = ratios_diff_poids(y0, sr0, l)
+    srs = copy[0]
+    poids = copy[1]
+    ratios = copy[3]
+
+    plt.figure()
+    plt.plot(poids,ratios)
+    plt.xlabel("Poids (octets)))
+    plt.ylabel("Diff/poids ")
+    plt.title("Ratio Diff / Poids")
+    plt.show()
