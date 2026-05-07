@@ -23,11 +23,12 @@ import soundfile as sf
 
 
 
-
-
 F="Jean-Rostand.wav"
 y , sr = librosa.load( F , sr=None , mono=True )
 sry=sr
+
+LSR=[2000+2000*i for i in range(25)]
+# Liste des sr cibles pour le multisampling
 
 def resample(a,srt) :
     '''Fonction rééchantillonnant l'audio choisi'''
@@ -40,23 +41,22 @@ def resample(a,srt) :
     # Ecriture du nouveau fichier
 
     # Génération de charts
-    d = librosa.stft(rsa, n_fft=2048, hop_length=512)
-    s_db = librosa.amplitude_to_db(np.abs(d), ref=np.max)
-    plt.figure()
-    librosa.display.waveshow(rsa,sr=srt)
-    plt.show()
+    # d = librosa.stft(rsa, n_fft=2048, hop_length=512)
+    # s_db = librosa.amplitude_to_db(np.abs(d), ref=np.max)
+    # plt.figure()
+    # librosa.display.waveshow(rsa,sr=srt)
+    # plt.show()
 
-    plt.figure()
-    librosa.display.specshow(s_db, sr=sr, x_axis="time", y_axis="log")
-    plt.colorbar(label="dB")
-    plt.title("Spectrogramme")
-    plt.show()
+    # plt.figure()
+    # plt.ticklabel_format(useOffset=False, axis='y')
+    # librosa.display.specshow(s_db, sr=srt, x_axis="time", y_axis="log")
+    # plt.colorbar(label="dB")
+    # plt.title("Spectrogramme")
+    # plt.show()
 
 
     return out
 
-LSR=[5000+1000*i for i in range(11)]
-# Liste des sr cibles pour le multisampling
 
 # Fonction simple " 1 par 1 " (single core, lourd pour de gros échantillons)
 
@@ -89,11 +89,11 @@ def grafik(a,l):
 
     for e in l :
         path = resample(a,e)
-        s = os.path.getsize(path) -45
+        s = os.path.getsize(path)
 
-        srs.append(sr)
+        srs.append(e)
         poids.append(s)
-        ratio.append(s/sr)
+        ratio.append(s/e)
 
     srs = np.array(srs)
     poids = np.array(poids)
@@ -115,7 +115,7 @@ def grafik(a,l):
 # l'original / poids afin de maximiser une audibilité
 
 def spec_db(a, sr_a):
-    '''Renvoie le spectrogramme de l'udio choisi'''
+    '''Renvoie le spectrogramme de l'audio choisi'''
     s = np.abs(librosa.stft(a, n_fft=2048))**2
     s_db = librosa.power_to_db(s, ref=np.max)
 
@@ -179,12 +179,12 @@ def affichage_ratios(y0, sr0, l):
     '''Affiche les ratios précédemment calculés'''
     copy = ratios_diff_poids(y0, sr0, l)
     srs = copy[0]
-    poids = copy[1]
+    # poids = copy[1]
     ratios = copy[3]
 
     plt.figure()
-    plt.plot(poids,ratios)
-    plt.xlabel("Poids (octets)))
-    plt.ylabel("Diff/poids ")
+    plt.plot(srs/1000,sr0*ratios)
+    plt.xlabel("SSR ( kHz )")
+    plt.ylabel("Diff/poids")
     plt.title("Ratio Diff / Poids")
     plt.show()
