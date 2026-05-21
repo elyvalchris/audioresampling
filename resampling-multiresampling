@@ -23,11 +23,11 @@ import soundfile as sf
 
 
 
-F="Jean-Rostand.wav"
+F="Alexandre-Lacroix.wav"
 y , sr = librosa.load( F , sr=None , mono=True )
 sry=sr
 
-LSR=[2000+2000*i for i in range(25)]
+LSR=[1000+int((47000/100)*i) for i in range(101)]
 # Liste des sr cibles pour le multisampling
 
 def resample(a,srt) :
@@ -41,18 +41,18 @@ def resample(a,srt) :
     # Ecriture du nouveau fichier
 
     # Génération de charts
-    # d = librosa.stft(rsa, n_fft=2048, hop_length=512)
-    # s_db = librosa.amplitude_to_db(np.abs(d), ref=np.max)
-    # plt.figure()
-    # librosa.display.waveshow(rsa,sr=srt)
-    # plt.show()
+    d = librosa.stft(rsa, n_fft=2048, hop_length=512)
+    s_db = librosa.amplitude_to_db(np.abs(d), ref=np.max)
+    plt.figure()
+    librosa.display.waveshow(rsa,sr=srt)
+    plt.show()
 
-    # plt.figure()
-    # plt.ticklabel_format(useOffset=False, axis='y')
-    # librosa.display.specshow(s_db, sr=srt, x_axis="time", y_axis="log")
-    # plt.colorbar(label="dB")
-    # plt.title("Spectrogramme")
-    # plt.show()
+    plt.figure()
+    plt.ticklabel_format(useOffset=False, axis='y')
+    librosa.display.specshow(s_db, sr=srt, x_axis="time", y_axis="log")
+    plt.colorbar(label="dB")
+    plt.title("Spectrogramme")
+    plt.show()
 
 
     return out
